@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, badge %}
+{% block title %}Cómo funciona{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+  <div>
+    <h1 class="text-3xl font-bold">Cómo funciona</h1>
+    <p class="mt-2 max-w-2xl muted">AdaptaRed convierte el pronóstico del tiempo en una decisión: qué comunidad corre más riesgo, por qué y qué hacer. Todo el cálculo está a la vista para que un técnico lo revise y lo ajuste.</p>
+  </div>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">El puntaje de riesgo</h2>
+    <p class="mt-2">Seguimos el marco del IPCC: el riesgo depende de la amenaza, de cuánta gente y cuántos medios de vida están expuestos y de qué tan vulnerables son.</p>
+    <p class="mt-4 rounded-md bg-river-50 px-4 py-3 font-display text-lg font-semibold text-river-800">Riesgo = 100 x amenaza x (0.4 + 0.6 x exposición) x (0.4 + 0.6 x vulnerabilidad)</p>
+    <p class="mt-3 text-sm muted">Amenaza, exposición y vulnerabilidad van de 0 a 1. El riesgo global de una comunidad es el de su amenaza más alta.</p>
+    <div class="mt-5 overflow-x-auto">
+      <table class="table-clean min-w-[480px]">
+        <thead><tr><th>Nivel</th><th>Puntaje</th><th>Qué significa</th></tr></thead>
+        <tbody>
+          <tr><td>{{ badge('bajo') }}</td><td>Menos de {{ thresholds.moderado }}</td><td>Vigilar con el pronóstico normal.</td></tr>
+          <tr><td>{{ badge('moderado') }}</td><td>{{ thresholds.moderado }} a {{ thresholds.alto - 1 }}</td><td>Avisar y preparar acciones simples.</td></tr>
+          <tr><td>{{ badge('alto') }}</td><td>{{ thresholds.alto }} a {{ thresholds.critico - 1 }}</td><td>Activar el plan de la comunidad en 24 a 72 horas.</td></tr>
+          <tr><td>{{ badge('critico') }}</td><td>{{ thresholds.critico }} o más</td><td>Actuar de inmediato y coordinar con defensa civil y salud.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">Cómo se calcula cada amenaza</h2>
+    <dl class="mt-4 space-y-4">
+      <div class="flex gap-3"><span class="mt-1 text-river-700">{{ icon("calor", "h-6 w-6") }}</span><div><dt class="font-semibold">Calor extremo</dt><dd class="text-sm muted">Mayor promedio de tres días seguidos en que la máxima supera lo normal de la zona. Desde 1.5 °C de diferencia empieza a contar y llega al tope con unos 6.5 °C.</dd></div></div>
+      <div class="flex gap-3"><span class="mt-1 text-river-700">{{ icon("inundacion", "h-6 w-6") }}</span><div><dt class="font-semibold">Inundación</dt><dd class="text-sm muted">Lluvia máxima en tres días del pronóstico, ajustada por cuánto suelo ya está saturado. Unos 90 mm en tres días sobre suelo mojado son el tope.</dd></div></div>
+      <div class="flex gap-3"><span class="mt-1 text-river-700">{{ icon("sequia", "h-6 w-6") }}</span><div><dt class="font-semibold">Sequía</dt><dd class="text-sm muted">Déficit de lluvia de los últimos 30 días frente a lo normal (60%) y humedad actual del suelo (40%).</dd></div></div>
+    </dl>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">Simulador agrícola</h2>
+    <p class="mt-2 text-sm">Cada cultivo tiene una temperatura crítica y una necesidad de agua mensual. El rendimiento baja con el estrés por calor (55% del efecto) y por falta de agua (45%). Cada medida reduce parte de ese estrés.</p>
+    <div class="mt-4 grid gap-5 md:grid-cols-2">
+      <table class="table-clean">
+        <thead><tr><th>Cultivo</th><th>Temp. crítica</th><th>Agua al mes</th></tr></thead>
+        <tbody>{% for k, c in crops.items() %}<tr><td>{{ c.name }}</td><td>{{ c.t_crit }} °C</td><td>{{ c.water_need|int }} mm</td></tr>{% endfor %}</tbody>
+      </table>
+      <table class="table-clean">
+        <thead><tr><th>Medida</th><th>Menos calor</th><th>Menos sequía</th></tr></thead>
+        <tbody>{% for k, m in measures.items() %}<tr><td>{{ m.name }}</td><td>{{ (m.heat * 100)|int }}%</td><td>{{ (m.water * 100)|int }}%</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">De dónde vendrían los datos reales</h2>
+    <ul class="mt-3 list-disc space-y-2 pl-5 text-sm">
+      <li><strong>Clima:</strong> hoy el botón "Comparar con datos en vivo" consulta Open-Meteo. Lo ideal es sumar estaciones de SENAMHI y lluvia satelital (CHIRPS).</li>
+      <li><strong>Población y vulnerabilidad:</strong> censos del INEI y registros de salud y agua de cada municipalidad.</li>
+      <li><strong>Cultivos:</strong> índices de vegetación de Sentinel-2 y calendarios de siembra de la agencia agraria.</li>
+      <li><strong>Eventos locales:</strong> los reportes de la comunidad, verificados por un técnico.</li>
+    </ul>
+  </section>
+
+  <section class="grid gap-6 md:grid-cols-2">
+    <div class="panel panel-pad">
+      <h2 class="h-section">Límites que debes conocer</h2>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm">
+        <li>Los datos de esta demostración son simulados. Los umbrales deben calibrarse con eventos históricos de cada zona.</li>
+        <li>El pronóstico a 7 días tiene incertidumbre, sobre todo para lluvia en montaña.</li>
+        <li>El simulador agrícola es ilustrativo y necesita datos de campo para dar cifras de cosecha.</li>
+        <li>No reemplaza a Defensa Civil ni al SENAMHI. Complementa su información con decisiones locales.</li>
+      </ul>
+    </div>
+    <div class="panel panel-pad">
+      <h2 class="h-section">Datos y comunidad</h2>
+      <ul class="mt-3 list-disc space-y-2 pl-5 text-sm">
+        <li>No se guardan nombres completos, DNI ni teléfonos de las personas que reportan.</li>
+        <li>Los datos de cada comunidad pertenecen a la comunidad y a su municipalidad.</li>
+        <li>Las alertas se revisan con personas del lugar antes de enviarlas a gran escala.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+{% endblock %}

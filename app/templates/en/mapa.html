@@ -1,0 +1,90 @@
+{% extends "en/base.html" %}
+{% from "en/_icons.html" import icon, badge %}
+{% block title %}Risk map{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='vendor/leaflet/leaflet.css') }}">{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <h1 class="text-3xl font-bold">Risk map</h1>
+  <p class="mt-2 max-w-2xl muted">Each circle is a community. The color shows the risk level and the size grows with population. Tap one to see its action plan.</p>
+
+  <fieldset class="mt-5 flex flex-wrap items-center gap-2">
+    <legend class="sr-only">Filter by hazard</legend>
+    <button type="button" class="btn btn-primary" data-filter="todas" aria-pressed="true">All</button>
+    {% for key, name in HAZARDS_EN.items() %}
+    <button type="button" class="btn btn-quiet" data-filter="{{ key }}" aria-pressed="false">{{ icon(key, "h-5 w-5") }}{{ name }}</button>
+    {% endfor %}
+  </fieldset>
+
+  <div class="mt-5 grid gap-6 lg:grid-cols-3">
+    <div class="panel overflow-hidden lg:col-span-2">
+      <div id="map" class="h-[60vh] min-h-[360px] w-full bg-river-50" role="application" aria-label="Interactive map of communities"></div>
+      <p id="map-note" class="hidden border-t border-line bg-[#FBF0CC] px-4 py-2 text-sm text-[#7A5600]">The base map could not be loaded (no connection). Communities are still shown on a plain background.</p>
+    </div>
+    <div class="panel panel-pad">
+      <h2 class="h-section">In order of risk</h2>
+      <ol id="list" class="mt-3 max-h-[56vh] divide-y divide-line overflow-y-auto pr-1"></ol>
+      <ul class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        {% for l in LEVELS %}<li class="flex items-center gap-1.5"><span class="dot dot-{{ l }}"></span>{{ LEVEL_LABELS_EN[l] }}</li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='vendor/leaflet/leaflet.js') }}"></script>
+<script>
+  const POINTS = {{ points|tojson }};
+  const map = L.map("map", { zoomControl: true, scrollWheelZoom: false, zoomSnap: 0.25 });
+  const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 14, attribution: "&copy; OpenStreetMap" }).addTo(map);
+  let tileErrors = 0;
+  tiles.on("tileerror", () => { if (++tileErrors > 3) document.getElementById("map-note").classList.remove("hidden"); });
+
+  const layer = L.layerGroup().addTo(map);
+  let filter = "todas";
+
+  function scoreFor(p) { return filter === "todas" ? p.score : p.by_hazard[filter].score; }
+  function levelFor(p) { return filter === "todas" ? p.level : p.by_hazard[filter].level; }
+
+  function popup(p) {
+    const lvl = levelFor(p);
+    return `<strong>${p.name}</strong><br>${p.district}, ${p.province}<br>` +
+      `${LEVEL_LABELS[lvl]} risk: ${Math.round(scoreFor(p))} of 100<br>` +
+      `${p.population.toLocaleString("en-US")} people, ${p.elevation} m<br>` +
+      `<a href="/comunidades/${p.slug}" style="font-weight:600;color:#17606B">Open action plan</a>`;
+  }
+
+  function draw() {
+    layer.clearLayers();
+    const sorted = [...POINTS].sort((a, b) => scoreFor(b) - scoreFor(a));
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    sorted.forEach((p) => {
+      const lvl = levelFor(p);
+      const m = L.circle([p.lat, p.lon], { radius: 1800 + scoreFor(p) * 55 + Math.sqrt(p.population) * 12, color: LEVEL_COLORS[lvl], weight: 2, fillColor: LEVEL_COLORS[lvl], fillOpacity: 0.45 }).addTo(layer);
+      m.bindPopup(popup(p));
+      L.circleMarker([p.lat, p.lon], { radius: 4, color: "#13262B", fillColor: "#fff", fillOpacity: 1, weight: 1.5 }).addTo(layer);
+      const li = document.createElement("li");
+      li.innerHTML = `<button type="button" class="flex w-full items-center gap-3 py-2.5 text-left hover:bg-river-50/60">
+        <span class="dot dot-${lvl}"></span><span class="flex-1"><span class="block font-semibold">${p.name}</span><span class="block text-xs muted">${p.province}</span></span>
+        <span class="font-display text-xl font-bold">${Math.round(scoreFor(p))}</span></button>`;
+      li.querySelector("button").addEventListener("click", () => { map.flyTo([p.lat, p.lon], 11, { duration: 0.8 }); m.openPopup(); });
+      list.appendChild(li);
+    });
+  }
+
+  map.fitBounds(L.latLngBounds(POINTS.map(p => [p.lat, p.lon])).pad(0.2));
+  draw();
+
+  document.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => {
+    filter = b.dataset.filter;
+    document.querySelectorAll("[data-filter]").forEach((x) => {
+      const on = x === b;
+      x.setAttribute("aria-pressed", on);
+      x.classList.toggle("btn-primary", on);
+      x.classList.toggle("btn-quiet", !on);
+    });
+    draw();
+  }));
+</script>
+{% endblock %}

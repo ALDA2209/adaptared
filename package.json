@@ -1,0 +1,16 @@
+{
+  "name": "adaptared",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i src/input.css -o app/static/css/styles.css --minify"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "5.3.0",
+    "@fontsource-variable/public-sans": "5.3.0",
+    "chart.js": "4.6.1",
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.19"
+  }
+}

@@ -1,0 +1,91 @@
+{% extends "en/base.html" %}
+{% from "en/_icons.html" import icon, badge %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <h1 class="text-3xl font-bold">Alerts</h1>
+  <p class="mt-2 max-w-2xl muted">Publish notices for a community or let the system create them from the forecast. A technician can always review and close them.</p>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-3">
+    <section class="lg:col-span-2" aria-labelledby="h-lista">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="h-lista" class="sr-only">List of alerts</h2>
+        <nav class="flex gap-2" aria-label="Filter by status">
+          <a class="btn {{ 'btn-primary' if not estado else 'btn-quiet' }}" href="/alertas">All</a>
+          <a class="btn {{ 'btn-primary' if estado == 'activa' else 'btn-quiet' }}" href="/alertas?estado=activa">Active</a>
+          <a class="btn {{ 'btn-primary' if estado == 'resuelta' else 'btn-quiet' }}" href="/alertas?estado=resuelta">Resolved</a>
+        </nav>
+        <form method="post" action="/alertas/generar">
+          <button class="btn btn-warn" type="submit">Create alerts from the forecast</button>
+        </form>
+      </div>
+
+      {% if alerts %}
+      <ul class="mt-4 space-y-3">
+        {% for a in alerts %}
+        <li class="panel panel-pad {{ 'opacity-70' if a.status == 'resuelta' }}">
+          <div class="flex flex-wrap items-center gap-2">
+            {{ icon(a.hazard, "h-5 w-5 text-river-700") }}
+            <a class="font-semibold text-river-700 underline underline-offset-4" href="/comunidades/{{ a.community_slug }}">{{ a.community_name }}</a>
+            <span class="muted text-sm">{{ HAZARDS_EN[a.hazard] }}</span>
+            {{ badge(a.level) }}
+            {% if a.source == 'automatica' %}<span class="badge bg-river-50 text-river-800">Created by the system</span>{% endif %}
+          </div>
+          <p class="mt-2">{{ a.message }}</p>
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span class="muted">{{ a.created_at|fecha_en }}, {{ "active" if a.status == "activa" else "resolved" }}</span>
+            <form method="post" action="/alertas/{{ a.id }}/estado">
+              {% if a.status == 'activa' %}
+              <input type="hidden" name="estado" value="resuelta">
+              <button class="btn btn-quiet" type="submit">Mark as resolved</button>
+              {% else %}
+              <input type="hidden" name="estado" value="activa">
+              <button class="btn btn-quiet" type="submit">Reactivate</button>
+              {% endif %}
+            </form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="panel panel-pad mt-4 text-center">
+        <p class="font-semibold">There are no alerts with this filter.</p>
+        <p class="mt-1 text-sm muted">Create one with the form or use the forecast.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <aside class="lg:sticky lg:top-6 lg:self-start">
+      <form method="post" action="/alertas" class="panel panel-pad space-y-4">
+        <h2 class="h-section">Publish an alert</h2>
+        <div>
+          <label class="label" for="comunidad">Community</label>
+          <select class="field" id="comunidad" name="comunidad" required>
+            {% for c in communities %}<option value="{{ c.slug }}">{{ c.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="label" for="amenaza">Hazard</label>
+            <select class="field" id="amenaza" name="amenaza" required>
+              {% for k, n in HAZARDS_EN.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label" for="nivel">Level</label>
+            <select class="field" id="nivel" name="nivel" required>
+              {% for l in LEVELS %}<option value="{{ l }}" {% if l == 'alto' %}selected{% endif %}>{{ LEVEL_LABELS_EN[l] }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="label" for="mensaje">Message</label>
+          <textarea class="field" id="mensaje" name="mensaje" rows="4" minlength="10" maxlength="400" required placeholder="What is happening, when, and what people should do."></textarea>
+          <p class="mt-1 text-xs muted">10 to 400 characters. Use short, clear sentences.</p>
+        </div>
+        <button class="btn btn-primary w-full" type="submit">Publish alert</button>
+      </form>
+    </aside>
+  </div>
+</div>
+{% endblock %}

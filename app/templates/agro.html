@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Agricultura{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <h1 class="text-3xl font-bold">Agricultura y clima</h1>
+  <p class="mt-2 max-w-2xl muted">Mueve el clima futuro y mira qué cultivos sufren más. Luego activa medidas de adaptación para ver cuánto se recupera la cosecha. Es un modelo simple para conversar con productores, no una predicción exacta.</p>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-5">
+    <form id="sim" class="panel panel-pad space-y-5 lg:col-span-2 lg:self-start" onsubmit="return false">
+      <div>
+        <label class="label" for="comunidad">Comunidad</label>
+        <select class="field" id="comunidad">
+          {% for c in communities %}<option value="{{ c.slug }}" {% if c.slug == 'panao' %}selected{% endif %}>{{ c.name }} ({{ c.main_crops }})</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="label" for="dtemp">Temperatura máxima: <output id="o-temp">+1.5</output> °C</label>
+        <input type="range" id="dtemp" min="0" max="5" step="0.5" value="1.5">
+      </div>
+      <div>
+        <label class="label" for="dlluvia">Lluvia del mes: <output id="o-rain">-15</output> %</label>
+        <input type="range" id="dlluvia" min="-50" max="30" step="5" value="-15">
+      </div>
+      <div class="flex flex-wrap gap-2" role="group" aria-label="Escenarios rápidos">
+        <button type="button" class="btn btn-quiet" data-preset="0,0">Clima actual</button>
+        <button type="button" class="btn btn-quiet" data-preset="1.5,-15">Hacia 2040</button>
+        <button type="button" class="btn btn-quiet" data-preset="3,-30">Año muy seco</button>
+      </div>
+      <fieldset>
+        <legend class="label">Medidas de adaptación</legend>
+        <div class="space-y-2">
+          {% for key, m in MEASURES.items() %}
+          <label class="flex min-h-[44px] items-center gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm">
+            <input type="checkbox" class="h-5 w-5 accent-river-700" value="{{ key }}" data-measure>
+            <span class="flex-1">{{ m.name }}</span><span class="muted">Costo {{ m.cost|lower }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </form>
+
+    <section class="space-y-6 lg:col-span-3" aria-live="polite">
+      <div class="panel panel-pad">
+        <h2 class="h-section">Rendimiento esperado por cultivo</h2>
+        <p id="sum" class="mt-1 text-sm muted"></p>
+        <div class="mt-4 h-72" role="img" aria-label="Rendimiento esperado por cultivo en tres situaciones"><canvas id="crops"></canvas></div>
+        <p class="mt-2 text-xs muted">100 es un rendimiento sin estrés por calor ni falta de agua. Los cultivos propios de la comunidad van con color más fuerte.</p>
+      </div>
+      <div class="panel panel-pad">
+        <h2 class="h-section" id="focus-title">Qué medida ayuda más</h2>
+        <div class="mt-3 overflow-x-auto">
+          <table class="table-clean min-w-[420px]">
+            <thead><tr><th>Medida</th><th>Costo</th><th>Cosecha que recupera</th></tr></thead>
+            <tbody id="measures"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const $ = (id) => document.getElementById(id);
+  let chart;
+  let timer;
+
+  function params() {
+    const ms = [...document.querySelectorAll("[data-measure]:checked")].map((x) => x.value).join(",");
+    return new URLSearchParams({ comunidad: $("comunidad").value, dtemp: $("dtemp").value, dlluvia: $("dlluvia").value, medidas: ms });
+  }
+
+  async function run() {
+    $("o-temp").textContent = (+$("dtemp").value > 0 ? "+" : "") + $("dtemp").value;
+    $("o-rain").textContent = (+$("dlluvia").value > 0 ? "+" : "") + $("dlluvia").value;
+    const r = await fetch("/api/agro/simular?" + params());
+    const d = await r.json();
+    const anyMeasure = d.scenario.measures.length > 0;
+    $("sum").textContent = `En ${d.community.name}: máxima típica de ${d.community.tmax} °C y ${d.community.rain30} mm de lluvia al mes.`;
+    const labels = d.crops.map((c) => c.name + (c.local ? " (local)" : ""));
+    const data = {
+      labels,
+      datasets: [
+        { label: "Clima actual", data: d.crops.map((c) => c.baseline), backgroundColor: d.crops.map((c) => (c.local ? "#17606B" : "#9CC9CE")), borderRadius: 3 },
+        { label: "Con el cambio", data: d.crops.map((c) => c.scenario), backgroundColor: d.crops.map((c) => (c.local ? "#D9722B" : "#F0C3A0")), borderRadius: 3 },
+      ],
+    };
+    if (anyMeasure) data.datasets.push({ label: "Con medidas", data: d.crops.map((c) => c.with_measures), backgroundColor: d.crops.map((c) => (c.local ? "#4F8A6B" : "#B9D4C5")), borderRadius: 3 });
+    if (chart) chart.destroy();
+    chart = new Chart($("crops"), {
+      type: "bar",
+      data,
+      options: {
+        scales: { y: { min: 0, max: 100, title: { display: true, text: "Rendimiento (0 a 100)" } }, x: { grid: { display: false } } },
+        plugins: { legend: { position: "bottom" } },
+      },
+    });
+    $("focus-title").textContent = `Qué medida ayuda más a ${d.focus.name.toLowerCase()}` + (d.focus.drop > 0 ? ` (pierde ${d.focus.drop} puntos con este clima)` : "");
+    $("measures").innerHTML = d.measures.map((m) => `<tr><td class="font-semibold">${m.name}</td><td>${m.cost}</td><td>${m.gain > 0 ? "+" + m.gain + " puntos" : "Sin efecto en este escenario"}</td></tr>`).join("");
+  }
+
+  function later() { clearTimeout(timer); timer = setTimeout(run, 120); }
+  ["comunidad", "dtemp", "dlluvia"].forEach((id) => $(id).addEventListener("input", later));
+  document.querySelectorAll("[data-measure]").forEach((x) => x.addEventListener("change", later));
+  document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+    const [t, r] = b.dataset.preset.split(",");
+    $("dtemp").value = t; $("dlluvia").value = r; run();
+  }));
+  run();
+</script>
+{% endblock %}

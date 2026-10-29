@@ -1,0 +1,71 @@
+{% from "_icons.html" import icon %}
+<!doctype html>
+<html lang="{{ lang|default('es') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AdaptaRed{% endblock %} - AdaptaRed</title>
+  <meta name="description" content="Alerta temprana y plan de adaptación climática para comunidades rurales de Huánuco.">
+  <meta name="theme-color" content="#0A2E35">
+  <link rel="preload" href="{{ url_for('static', path='fonts/bricolage-grotesque-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <a href="#contenido" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md focus:bg-maize focus:px-4 focus:py-2 focus:font-semibold">Saltar al contenido</a>
+
+  <header class="sticky top-0 z-30 flex items-center justify-between bg-river-900 px-4 py-2.5 text-white lg:hidden">
+    <a href="/" class="font-display text-lg font-bold">AdaptaRed</a>
+    <div class="flex items-center gap-2">
+    <div class="flex overflow-hidden rounded-md border border-white/30 text-sm font-bold" role="group" aria-label="Idioma / Language">
+      <a href="/idioma/es?next={{ next_url }}" class="flex min-h-[44px] items-center px-3.5 {{ 'bg-maize text-ink' if lang == 'es' else 'text-white hover:bg-white/10' }}" lang="es" {% if lang == 'es' %}aria-current="true"{% endif %}>ES</a>
+      <a href="/idioma/en?next={{ next_url }}" class="flex min-h-[44px] items-center px-3.5 {{ 'bg-maize text-ink' if lang == 'en' else 'text-white hover:bg-white/10' }}" lang="en" {% if lang == 'en' %}aria-current="true"{% endif %}>EN</a>
+    </div>
+    <button id="menu-btn" type="button" class="flex h-11 w-11 items-center justify-center rounded-md hover:bg-white/10" aria-controls="sidebar" aria-expanded="false" aria-label="Abrir menú">
+      {{ icon("menu", "h-6 w-6") }}
+    </button>
+    </div>
+  </header>
+
+  <aside id="sidebar" class="contours fixed inset-y-0 left-0 z-40 hidden w-72 flex-col overflow-y-auto bg-river-900 px-4 pb-5 pt-6 text-white lg:flex" aria-label="Navegación principal">
+    <a href="/" class="mb-8 flex items-center gap-3 px-2">
+      <svg viewBox="0 0 40 28" class="h-7 w-10" fill="none" aria-hidden="true">
+        <path d="M1 26L12 8l7 10 6-12 14 20z" fill="#E0A526"/><path d="M1 26L12 8l7 10" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span class="font-display text-2xl font-bold leading-none">AdaptaRed</span>
+    </a>
+    <p class="mb-5 px-2 text-sm leading-relaxed text-river-100/80">Alerta temprana y plan de adaptación para comunidades rurales de Huánuco.</p>
+    <nav class="flex flex-1 flex-col gap-1">
+      {% for key, href, label, ico in nav %}
+      <a href="{{ href }}" class="nav-link" {% if key == active %}aria-current="page"{% endif %}>{{ icon(ico) }}<span>{{ label }}</span></a>
+      {% endfor %}
+    </nav>
+    <div class="mt-6 flex items-center justify-between gap-3 px-1">
+      <span class="text-sm text-river-100/80">Idioma</span>
+      <div class="flex overflow-hidden rounded-md border border-white/30 text-sm font-bold" role="group" aria-label="Idioma / Language">
+      <a href="/idioma/es?next={{ next_url }}" class="flex min-h-[44px] items-center px-3.5 {{ 'bg-maize text-ink' if lang == 'es' else 'text-white hover:bg-white/10' }}" lang="es" {% if lang == 'es' %}aria-current="true"{% endif %}>ES</a>
+      <a href="/idioma/en?next={{ next_url }}" class="flex min-h-[44px] items-center px-3.5 {{ 'bg-maize text-ink' if lang == 'en' else 'text-white hover:bg-white/10' }}" lang="en" {% if lang == 'en' %}aria-current="true"{% endif %}>EN</a>
+    </div>
+    </div>
+    <div class="mt-4 rounded-md border border-white/20 bg-black/20 p-3 text-sm leading-relaxed text-river-100/90">
+      <p class="font-semibold text-maize">Modo demostración</p>
+      <p>Las cifras de clima, población y riesgo son simuladas. Mira "Cómo funciona" para ver cómo conectar datos reales.</p>
+    </div>
+  </aside>
+
+  <div id="scrim" class="fixed inset-0 z-30 hidden bg-black/50 lg:hidden"></div>
+
+  <main id="contenido" class="min-h-screen lg:pl-72">
+    {% if flash %}
+    <div role="status" class="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+      <p class="rounded-md border px-4 py-3 text-sm font-medium {% if flash_kind == 'err' %}border-risk-critico/40 bg-[#F6D4CF] text-[#8E1B13]{% else %}border-river-700/30 bg-river-50 text-river-800{% endif %}">{{ flash }}</p>
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', path='vendor/chart.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', path='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

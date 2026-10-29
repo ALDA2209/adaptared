@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Impacto{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+  <div>
+    <h1 class="text-3xl font-bold">Impacto y sostenibilidad</h1>
+    <p class="mt-2 max-w-2xl muted">Cómo crecería AdaptaRed y cómo se sostendría. Las cifras de esta página son proyecciones de ejemplo: reemplázalas con las tuyas antes de postular.</p>
+  </div>
+
+  <p class="rounded-md border border-maize/60 bg-[#FBF0CC] px-4 py-3 text-sm text-[#7A5600]" role="note">Proyecciones de ejemplo, no resultados medidos. Solve pide evidencia real de lo que ya construiste y probaste.</p>
+
+  <section class="grid gap-6 lg:grid-cols-2">
+    <div class="panel panel-pad">
+      <h2 class="h-section">Alcance en tres años</h2>
+      <p class="mt-1 text-sm muted">Comunidades conectadas y personas que reciben alertas.</p>
+      <div class="mt-4 h-64" role="img" aria-label="Comunidades y personas alcanzadas por año"><canvas id="reach"></canvas></div>
+    </div>
+    <div class="panel panel-pad">
+      <h2 class="h-section">Costo por persona protegida</h2>
+      <p class="mt-1 text-sm muted">Baja a medida que cada comunidad nueva reutiliza el mismo sistema.</p>
+      <div class="mt-4 h-64" role="img" aria-label="Costo por persona por año"><canvas id="cpp"></canvas></div>
+    </div>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">De dónde vendría el dinero</h2>
+    <p class="mt-1 max-w-2xl text-sm muted">Miles de dólares por año. El cliente principal es el gobierno local (municipalidades y gobierno regional), que ya paga por gestión de riesgo.</p>
+    <div class="mt-4 h-72" role="img" aria-label="Ingresos por fuente y costos por año"><canvas id="fin"></canvas></div>
+    <p class="mt-3 text-sm">Resultado de cada año (ingresos menos costos): {% for y in impact.years %}<strong>{{ y }}</strong> {{ "%+d"|format(net[loop.index0]) }} mil US${% if not loop.last %}, {% endif %}{% endfor %}.</p>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">Cómo responde a los criterios de Solve</h2>
+    <p class="mt-1 text-sm muted">Cada criterio con lo que ya hace el prototipo y lo que falta demostrar.</p>
+    <div class="mt-4 overflow-x-auto">
+      <table class="table-clean min-w-[760px]">
+        <thead><tr><th class="w-44">Criterio</th><th>Lo que ya hay</th><th>Lo que falta demostrar</th></tr></thead>
+        <tbody>
+          <tr><td class="font-semibold">Alineación</td><td>Usa tecnología para proteger a las personas de calor, inundación y sequía, y para adaptar cultivos. Está en el mapa y en la página de agricultura.</td><td>Nada: encaja con "protección frente a peligros climáticos".</td></tr>
+          <tr><td class="font-semibold">Potencial de impacto</td><td>Convierte el pronóstico de 7 días en acciones con responsable y plazo.</td><td>Medir cuántas personas reciben el aviso y cuánta pérdida se evita en un piloto.</td></tr>
+          <tr><td class="font-semibold">Viabilidad</td><td>Funciona con datos abiertos y personal municipal. Corre en un servidor económico.</td><td>Un acuerdo con una municipalidad o una junta de regantes.</td></tr>
+          <tr><td class="font-semibold">Enfoque innovador</td><td>Un solo puntaje explicable, reportes de la comunidad verificados y un simulador de medidas de adaptación.</td><td>Mostrar en qué se diferencia de los sistemas de alerta que ya existen en la región.</td></tr>
+          <tr><td class="font-semibold">Diseño centrado en las personas</td><td>Lenguaje sencillo, reportes sin DNI ni teléfono y vista pensada para el móvil.</td><td>Talleres con comunidades que validen las alertas y los plazos.</td></tr>
+          <tr><td class="font-semibold">Escalabilidad</td><td>Cada comunidad nueva es una fila de datos. Las fuentes de clima son abiertas.</td><td>Calibrar los umbrales por zona (selva, valle, puna).</td></tr>
+          <tr><td class="font-semibold">Potencial de alianzas</td><td>Puede conectarse con SENAMHI, gobiernos locales y universidades.</td><td>Cartas de interés de esos socios.</td></tr>
+          <tr><td class="font-semibold">Viabilidad técnica</td><td>El modelo sigue el marco amenaza, exposición y vulnerabilidad del IPCC. Las reglas están visibles.</td><td>Comparar sus alertas con eventos pasados reales.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">Hoja de ruta</h2>
+    <ol class="mt-4 grid gap-4 md:grid-cols-3">
+      <li class="border-l-4 border-maize pl-4"><p class="font-display text-lg font-semibold">Piloto en Huánuco</p><p class="mt-1 text-sm muted">Primeras 12 comunidades con datos de SENAMHI y reportes locales. Se valida el modelo con eventos pasados.</p></li>
+      <li class="border-l-4 border-river-600 pl-4"><p class="font-display text-lg font-semibold">Selva central</p><p class="mt-1 text-sm muted">Se suman regiones vecinas. Alertas por SMS y radio para zonas sin internet estable.</p></li>
+      <li class="border-l-4 border-river-800 pl-4"><p class="font-display text-lg font-semibold">Región andino-amazónica</p><p class="mt-1 text-sm muted">Cientos de comunidades con suscripciones municipales y alianzas con aseguradoras agrarias.</p></li>
+    </ol>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const IMPACT = {{ impact|tojson }};
+  new Chart(document.getElementById("reach"), {
+    data: {
+      labels: IMPACT.years,
+      datasets: [
+        { type: "bar", label: "Comunidades", data: IMPACT.communities, backgroundColor: "#17606B", borderRadius: 3, yAxisID: "y" },
+        { type: "line", label: "Personas", data: IMPACT.people, borderColor: "#E0A526", backgroundColor: "#E0A526", borderWidth: 2.5, pointRadius: 4, yAxisID: "y1" },
+      ],
+    },
+    options: { scales: { y: { title: { display: true, text: "Comunidades" }, beginAtZero: true }, y1: { position: "right", grid: { display: false }, title: { display: true, text: "Personas" }, beginAtZero: true, ticks: { callback: (v) => v.toLocaleString("es-PE") } } }, plugins: { legend: { position: "bottom" } } },
+  });
+  new Chart(document.getElementById("cpp"), {
+    type: "line",
+    data: { labels: IMPACT.years, datasets: [{ label: "US$ por persona", data: IMPACT.cost_per_person, borderColor: "#B5482B", backgroundColor: "#B5482B", borderWidth: 2.5, pointRadius: 4, tension: 0.25 }] },
+    options: { scales: { y: { beginAtZero: true, title: { display: true, text: "US$ por persona" } } }, plugins: { legend: { display: false } } },
+  });
+  const palette = ["#17606B", "#4F8A6B", "#D9A21B", "#9CC9CE"];
+  const ds = Object.entries(IMPACT.revenue).map(([name, vals], i) => ({ type: "bar", label: name, data: vals, backgroundColor: palette[i], stack: "ing", borderRadius: 2 }));
+  ds.push({ type: "line", label: "Costos", data: IMPACT.costs, borderColor: "#B3261E", backgroundColor: "#B3261E", borderWidth: 2.5, pointRadius: 4 });
+  new Chart(document.getElementById("fin"), {
+    data: { labels: IMPACT.years, datasets: ds },
+    options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, title: { display: true, text: "Miles de US$" } } }, plugins: { legend: { position: "bottom" } } },
+  });
+</script>
+{% endblock %}

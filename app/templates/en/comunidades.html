@@ -1,0 +1,77 @@
+{% extends "en/base.html" %}
+{% from "en/_icons.html" import icon, badge %}
+{% block title %}Communities{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+  <h1 class="text-3xl font-bold">Communities</h1>
+  <p class="mt-2 max-w-2xl muted">Search for a community or filter by level and hazard. Open one to see its forecast, the services at risk and what to do.</p>
+
+  <form method="get" class="panel panel-pad mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-5" role="search">
+    <div class="lg:col-span-2">
+      <label class="label" for="q">Search</label>
+      <input class="field" id="q" name="q" value="{{ q }}" placeholder="Name, district or province">
+    </div>
+    <div>
+      <label class="label" for="nivel">Risk level</label>
+      <select class="field" id="nivel" name="nivel">
+        <option value="">All</option>
+        {% for l in LEVELS %}<option value="{{ l }}" {% if nivel == l %}selected{% endif %}>{{ LEVEL_LABELS_EN[l] }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="amenaza">Hazard</label>
+      <select class="field" id="amenaza" name="amenaza">
+        <option value="">All</option>
+        {% for k, n in HAZARDS_EN.items() %}<option value="{{ k }}" {% if amenaza == k %}selected{% endif %}>{{ n }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="label" for="orden">Sort by</label>
+      <select class="field" id="orden" name="orden">
+        <option value="riesgo" {% if orden == 'riesgo' %}selected{% endif %}>Highest risk</option>
+        <option value="nombre" {% if orden == 'nombre' %}selected{% endif %}>Name</option>
+        <option value="poblacion" {% if orden == 'poblacion' %}selected{% endif %}>Population</option>
+      </select>
+    </div>
+    <div class="flex gap-3 sm:col-span-2 lg:col-span-5">
+      <button class="btn btn-primary" type="submit">Apply filters</button>
+      <a class="btn btn-quiet" href="/comunidades">Clear</a>
+    </div>
+  </form>
+
+  <p class="mt-5 text-sm muted" aria-live="polite">{{ items|length }} {{ "community" if items|length == 1 else "communities" }}</p>
+
+  {% if items %}
+  <div class="panel mt-2 overflow-x-auto">
+    <table class="table-clean min-w-[720px]">
+      <thead>
+        <tr><th>Community</th><th>Overall risk</th>{% for k, n in HAZARDS_EN.items() %}<th>{{ n }}</th>{% endfor %}<th>Population</th><th>Safe water</th></tr>
+      </thead>
+      <tbody>
+        {% for c in items %}
+        <tr>
+          <td>
+            <a class="font-semibold text-river-700 underline underline-offset-4" href="/comunidades/{{ c.slug }}">{{ c.name }}</a>
+            <span class="block text-xs muted">{{ c.province }}, {{ c.elevation|miles }} m</span>
+          </td>
+          <td><span class="flex items-center gap-2"><strong class="font-display text-lg">{{ c.risk.score|round|int }}</strong>{{ badge(c.risk.level) }}</span></td>
+          {% for k in HAZARDS_EN %}
+          {% set h = c.risk.by_hazard[k] %}
+          <td><span class="flex items-center gap-2"><span class="dot dot-{{ h.level }}"></span>{{ h.score|round|int }}</span></td>
+          {% endfor %}
+          <td>{{ c.population|miles }}</td>
+          <td>{{ (c.water_access * 100)|round|int }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel panel-pad mt-3 text-center">
+    <p class="font-semibold">No community matches those filters.</p>
+    <p class="mt-1 text-sm muted">Try another level or remove the hazard.</p>
+    <a class="btn btn-primary mt-4" href="/comunidades">See all communities</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

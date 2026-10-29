@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, badge %}
+{% block title %}Panel{% endblock %}
+{% block content %}
+<section class="contours bg-river-800 text-white">
+  <div class="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-5 lg:py-14">
+    <div class="rise lg:col-span-2">
+      <h1 class="text-3xl font-bold leading-tight sm:text-4xl">{{ headline }}</h1>
+      <p class="mt-4 max-w-md text-base leading-relaxed text-river-100/90">
+        {{ summary.people_high|miles }} de {{ summary.people_total|miles }} personas viven en esas comunidades.
+        Cerca de {{ summary.no_water|miles }} de ellas no tienen agua segura en casa, lo que agrava cualquier evento.
+      </p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="/mapa" class="btn btn-warn">Ver el mapa de riesgo</a>
+        <a href="/comunidades/{{ top.slug }}" class="btn border border-white/40 text-white hover:bg-white/10">Plan para {{ top.name }}</a>
+      </div>
+    </div>
+    <figure class="lg:col-span-3">
+      <figcaption class="mb-2 text-sm text-river-100/90">Riesgo de cada comunidad según su altitud. Del trópico en el extremo izquierdo a la puna en el derecho.</figcaption>
+      <div class="h-64 rounded-md bg-black/20 p-3 sm:h-72" role="img" aria-label="Gráfico de barras: riesgo por comunidad ordenadas por altitud">
+        <canvas id="ridge"></canvas>
+      </div>
+    </figure>
+  </div>
+</section>
+
+<div class="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+  <section class="grid gap-6 lg:grid-cols-5">
+    <div class="panel panel-pad lg:col-span-3">
+      <div class="mb-4 flex items-end justify-between gap-3">
+        <h2 class="h-section">Comunidades que necesitan acción primero</h2>
+        <a href="/comunidades" class="text-sm font-semibold text-river-700 underline underline-offset-4">Ver las {{ summary.n }}</a>
+      </div>
+      <ol class="divide-y divide-line">
+        {% for c in top5 %}
+        <li>
+          <a href="/comunidades/{{ c.slug }}" class="flex items-center gap-4 py-3.5 hover:bg-river-50/60">
+            <span class="w-14 shrink-0 text-center font-display text-3xl font-bold" style="color: var(--lv-{{ c.risk.level }})">{{ c.risk.score|round|int }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span class="font-semibold">{{ c.name }}</span>
+                {{ badge(c.risk.level) }}
+              </span>
+              <span class="mt-0.5 block text-sm muted">{{ c.risk.dominant_name }}, {{ c.province }}, {{ c.population|miles }} personas</span>
+              <span class="meter mt-2 block"><span class="bar-{{ c.risk.level }}" style="width: {{ c.risk.score }}%"></span></span>
+            </span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <div class="space-y-6 lg:col-span-2">
+      <div class="panel panel-pad">
+        <h2 class="h-section">Qué amenaza pesa más</h2>
+        <p class="mt-1 text-sm muted">Comunidades en riesgo alto o crítico, por tipo de amenaza.</p>
+        <ul class="mt-4 space-y-3">
+          {% for key, name in HAZARDS.items() %}
+          <li class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-md bg-river-50 text-river-700">{{ icon(key, "h-6 w-6") }}</span>
+            <span class="flex-1 font-medium">{{ name }}</span>
+            <span class="font-display text-2xl font-bold">{{ hazard_counts[key] }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="panel panel-pad">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="h-section">Alertas activas</h2>
+          <a href="/alertas" class="text-sm font-semibold text-river-700 underline underline-offset-4">Ver todas</a>
+        </div>
+        {% if alerts %}
+        <ul class="mt-3 space-y-3">
+          {% for a in alerts %}
+          <li class="text-sm">
+            <p class="flex flex-wrap items-center gap-2"><strong>{{ a.community_name }}</strong> {{ badge(a.level) }}</p>
+            <p class="mt-1 muted">{{ a.message }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="mt-3 text-sm muted">No hay alertas activas. Genera alertas desde el pronóstico para avisar a las comunidades.</p>
+        {% endif %}
+        <form method="post" action="/alertas/generar" class="mt-4">
+          <button class="btn btn-primary w-full" type="submit">Crear alertas desde el pronóstico</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel panel-pad">
+    <h2 class="h-section">Próximos 7 días en {{ top.name }}</h2>
+    <p class="mt-1 max-w-2xl text-sm muted">Es la comunidad con mayor riesgo hoy. Los trazos punteados son pronóstico.</p>
+    <div class="mt-4 h-72" role="img" aria-label="Temperatura máxima, mínima y lluvia diaria de {{ top.name }}"><canvas id="climate"></canvas></div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const RIDGE = {{ ridge|tojson }};
+  const SERIES = {{ series|tojson }};
+
+  new Chart(document.getElementById("ridge"), {
+    data: {
+      labels: RIDGE.map(r => r.name),
+      datasets: [
+        { type: "bar", label: "Riesgo", data: RIDGE.map(r => r.score), backgroundColor: RIDGE.map(r => LEVEL_COLORS[r.level]), borderRadius: 3, maxBarThickness: 34, order: 2 },
+        { type: "line", label: "Altitud (m)", data: RIDGE.map(r => r.elevation), yAxisID: "y1", borderColor: "#EAF3F2", backgroundColor: "#EAF3F2", borderWidth: 2, borderDash: [5,4], pointRadius: 3, tension: 0.35, order: 1 },
+      ],
+    },
+    options: {
+      onClick: (_e, els) => { if (els.length) window.location = "/comunidades/" + RIDGE[els[0].index].slug; },
+      scales: {
+        x: { ticks: { color: "#D6E8E7", maxRotation: 55, minRotation: 55, font: { size: 11 } }, grid: { display: false } },
+        y: { min: 0, max: 100, title: { display: true, text: "Riesgo (0 a 100)", color: "#D6E8E7" }, ticks: { color: "#D6E8E7" }, grid: { color: "rgba(255,255,255,.12)" } },
+        y1: { position: "right", title: { display: true, text: "Altitud (m)", color: "#D6E8E7" }, ticks: { color: "#D6E8E7" }, grid: { display: false } },
+      },
+      plugins: {
+        legend: { labels: { color: "#EAF3F2" } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ": " + c.parsed.y + (c.datasetIndex === 0 ? " (" + LEVEL_LABELS[RIDGE[c.dataIndex].level] + ")" : " m") } },
+      },
+    },
+  });
+
+  buildClimateChart(document.getElementById("climate"), SERIES);
+</script>
+{% endblock %}
