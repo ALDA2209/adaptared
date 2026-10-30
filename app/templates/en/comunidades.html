@@ -45,7 +45,7 @@
   <div class="panel mt-2 overflow-x-auto">
     <table class="table-clean min-w-[720px]">
       <thead>
-        <tr><th>Community</th><th>Overall risk</th>{% for k, n in HAZARDS_EN.items() %}<th>{{ n }}</th>{% endfor %}<th>Population</th><th>Safe water</th></tr>
+        <tr><th>Community</th><th>Overall risk</th>{% for k, n in HAZARDS_EN.items() %}<th>{{ n }}</th>{% endfor %}<th>Population</th><th>Safe water</th><th>Solution</th></tr>
       </thead>
       <tbody>
         {% for c in items %}
@@ -61,6 +61,7 @@
           {% endfor %}
           <td>{{ c.population|miles }}</td>
           <td>{{ (c.water_access * 100)|round|int }}%</td>
+          <td><a href="/comunidades/{{ c.slug }}/solucion.pdf" download aria-label="Download the solution for {{ c.name }} as PDF" style="display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:6px;background:#C62828;color:#fff;font-weight:700;font-size:13px;line-height:1;text-decoration:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>PDF</a></td>
         </tr>
         {% endfor %}
       </tbody>

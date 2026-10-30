@@ -57,7 +57,10 @@
   </section>
 
   <section aria-labelledby="h-plan" class="panel panel-pad">
-    <h2 id="h-plan" class="h-section">Qué hacer ahora</h2>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <h2 id="h-plan" class="h-section">Qué hacer ahora</h2>
+      <a href="/comunidades/{{ c.slug }}/solucion.pdf" download aria-label="Descargar solución de {{ c.name }} en PDF" style="display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:6px;background:#C62828;color:#fff;font-weight:700;font-size:13px;line-height:1;text-decoration:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>Descargar solución (PDF)</a>
+    </div>
     {% if plans %}
     <p class="mt-1 text-sm muted">Las acciones aparecen según el nivel de riesgo de cada amenaza. Suben de intensidad si el riesgo aumenta.</p>
     <div class="mt-4 space-y-6">

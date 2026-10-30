@@ -7,11 +7,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import i18n, risk, services
+from . import i18n, pdfexport, risk, services
 from .db import get_db, init_db
 from .seed import seed_if_needed
 from .weather import fetch_open_meteo
@@ -195,9 +195,8 @@ def comunidades(request: Request, q: str = "", nivel: str = "", amenaza: str = "
     return render(request, "comunidades.html", "comunidades", items=items, q=q, nivel=nivel, amenaza=amenaza, orden=orden)
 
 
-@app.get("/comunidades/{slug}")
-def comunidad(request: Request, slug: str, db=Depends(get_database)):
-    lang = current_lang(request)
+def community_context(db, slug: str, lang: str) -> dict:
+    """Datos de una comunidad que comparten la página y el PDF del plan."""
     c = services.get_community(db, slug)
     if not c:
         raise HTTPException(404, i18n.tr(lang, "nf_community"))
@@ -212,19 +211,37 @@ def comunidad(request: Request, slug: str, db=Depends(get_database)):
     alerts = [a for a in services.get_alerts(db, None, lang) if a["community_id"] == c["id"]]
     reports = [r for r in services.get_reports(db, lang) if r["community_id"] == c["id"]]
     fut = [o for o in obs if o["is_forecast"]]
-    return render(
-        request,
-        "comunidad.html",
-        "comunidades",
-        c=c,
-        hazards=order,
-        plans=plans,
-        alerts=alerts,
-        reports=reports,
-        series=series_payload(obs),
-        people_no_water=round(c["population"] * (1 - c["water_access"])),
-        peak_tmax=max((o["tmax"] for o in fut), default=None),
-        total_rain=round(sum(o["rain"] for o in fut), 1),
+    return {
+        "c": c,
+        "obs": obs,
+        "hazards": order,
+        "plans": plans,
+        "alerts": alerts,
+        "reports": reports,
+        "series": series_payload(obs),
+        "people_no_water": round(c["population"] * (1 - c["water_access"])),
+        "peak_tmax": max((o["tmax"] for o in fut), default=None),
+        "total_rain": round(sum(o["rain"] for o in fut), 1),
+    }
+
+
+@app.get("/comunidades/{slug}")
+def comunidad(request: Request, slug: str, db=Depends(get_database)):
+    ctx = community_context(db, slug, current_lang(request))
+    return render(request, "comunidad.html", "comunidades", **ctx)
+
+
+@app.get("/comunidades/{slug}/solucion.pdf")
+def solucion_pdf(request: Request, slug: str, db=Depends(get_database)):
+    """Descarga la hoja de solución de la comunidad (acciones concretas) como PDF, en el idioma activo."""
+    lang = current_lang(request)
+    ctx = community_context(db, slug, lang)
+    data = pdfexport.build_solution_pdf(ctx["c"], ctx["hazards"], ctx["plans"], ctx["obs"], lang)
+    name = "solucion" if lang == "es" else "solution"
+    return Response(
+        data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{name}-{slug}.pdf"'},
     )
 
 
